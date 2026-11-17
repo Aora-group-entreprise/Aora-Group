@@ -63,9 +63,10 @@ async function authorize(env) {
 
   const data = await response.json();
   const storage = data.apiInfo?.storageApi;
-  const allowedBuckets = data.allowed?.buckets || [];
+  const allowed = storage?.allowed || {};
+  const allowedBuckets = allowed.buckets || [];
   const bucketAllowed = allowedBuckets.some(bucket => bucket.id === env.B2_BUCKET_ID);
-  const capabilities = data.allowed?.capabilities || [];
+  const capabilities = allowed.capabilities || [];
 
   if (!storage?.apiUrl || !storage?.downloadUrl || !bucketAllowed) {
     throw new Error("The Backblaze key is not restricted to the configured bucket or has invalid permissions.");
