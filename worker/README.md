@@ -26,7 +26,7 @@ npx wrangler secret put B2_APPLICATION_KEY
 npx wrangler secret put ADMIN_TOKEN
 ```
 
-Paste each value only into the terminal prompt. Alternatively, in Cloudflare Dashboard open Workers & Pages → `aora-group-storage` → Settings → Variables and Secrets, then add each as type **Secret**.
+Paste each value only into the terminal prompt. Alternatively, in Cloudflare Dashboard open Workers & Pages → `aora-group` → Settings → Variables and Secrets, then add each as type **Secret**.
 
 The Backblaze application key must be restricted to bucket `aoragroup` and include `readFiles` + `writeFiles` permissions. Do not use the account master key.
 
@@ -35,7 +35,7 @@ The Backblaze application key must be restricted to bucket `aoragroup` and inclu
 1. Open Cloudflare Dashboard → **Workers & Pages** → **Create application**.
 2. Choose **GitHub** and authorize Cloudflare to access the AORA GROUP repository if requested.
 3. Select `Aora-group-entreprise/Aora-Group`.
-4. Set the Worker name to `aora-group-storage`.
+4. Set the Worker name to `aora-group`.
 5. Set the **root directory** to `worker`.
 6. Leave the build command empty and use `npx wrangler deploy` as the deploy command.
 7. Select **Save and Deploy**. Cloudflare will publish the Worker and show its `workers.dev` URL.
@@ -44,19 +44,19 @@ The repository already contains `worker/wrangler.toml`; the root directory must 
 
 ## 3. Add the secrets after the first deployment
 
-Open Workers & Pages → `aora-group-storage` → Settings → Variables and Secrets. Add these three values with type **Secret**:
+Open Workers & Pages → `aora-group` → Settings → Variables and Secrets. Add these three values with type **Secret**:
 
 - `B2_KEY_ID`
 - `B2_APPLICATION_KEY`
 - `ADMIN_TOKEN`
 
-Use the bucket-scoped Backblaze key you created. Generate a separate long random admin token in a password manager. Do not send any of these values in this chat or add them to GitHub. Deploy the new Worker version after adding them.
+Use the bucket-scoped Backblaze key you created. Generate a long random admin token and store it in a password manager. For the current setup, use the ADMIN_TOKEN value generated for you in this conversation, then save it as a Cloudflare Worker Secret. Do not send any of these values in this chat or add them to GitHub. Deploy the new Worker version after adding them.
 
 ## 4. Restrict the website origin
 
 For initial testing, `ALLOWED_ORIGIN = "*"` is enabled. Before the public website starts using this Worker, replace it in `wrangler.toml` with the exact AORA GROUP Pages origin or custom domain, then let Cloudflare redeploy. Example: `https://aora-group.pages.dev`.
 
-The public website must never contain `ADMIN_TOKEN`, `B2_KEY_ID`, or `B2_APPLICATION_KEY`. The upload endpoint is intended for a trusted private admin tool or server-side workflow, not direct calls from public frontend JavaScript.
+The Worker code reads the secret from `env.ADMIN_TOKEN`; the secret value is intentionally not stored in this repository. The public website must never contain `ADMIN_TOKEN`, `B2_KEY_ID`, or `B2_APPLICATION_KEY`. The upload endpoint is intended for a trusted private admin tool or server-side workflow, not direct calls from public frontend JavaScript.
 
 ## 4. Test the connection
 
