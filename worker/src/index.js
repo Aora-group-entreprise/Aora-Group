@@ -1,198 +1,37 @@
 /**
- * AORA GROUP — Supabase Storage gateway.
- * Public downloads are limited to the public/ prefix.
- * Uploads require ADMIN_TOKEN and a server-side Supabase secret key.
- * Never expose SUPABASE_SERVICE_ROLE_KEY in browser code.
+ * AORA GROUP — public app catalogue + protected publishing API.
+ * ADMIN_TOKEN and SUPABASE_SERVICE_ROLE_KEY are Cloudflare Worker secrets only.
  */
-
-const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const BUCKET = "aoragroup";
-const ALLOWED_CONTENT_TYPES = new Set([
-  "application/vnd.android.package-archive",
-  "application/octet-stream",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/svg+xml",
-  "application/pdf",
-  "application/zip",
-  "text/plain"
-]);
-
-const json = (data, status = 200, headers = {}) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers }
-  });
-
-function corsHeaders(request, env) {
-  const origin = request.headers.get("Origin") || "";
-  const allowed = env.ALLOWED_ORIGIN || "*";
-  const originAllowed = allowed === "*" || origin === allowed;
-  return {
-    "access-control-allow-origin": originAllowed ? (allowed === "*" ? "*" : origin) : "null",
-    "access-control-allow-methods": "GET, HEAD, POST, OPTIONS",
-    "access-control-allow-headers": "Authorization, Content-Type, Range",
-    "access-control-expose-headers": "Content-Length, Content-Range, Accept-Ranges, ETag",
-    "access-control-max-age": "86400",
-    "vary": "Origin",
-    "x-content-type-options": "nosniff"
-  };
-}
-
-function safeKey(raw) {
-  try {
-    const key = decodeURIComponent(raw || "").replace(/^\/+/, "");
-    if (!key || key.length > 900 || key.includes("\\") ||
-        key.split("/").some(part => !part || part === "." || part === "..") ||
-        !key.startsWith("public/") ||
-        !/^[A-Za-z0-9._/-]+$/.test(key)) return null;
-    return key;
-  } catch {
-    return null;
-  }
-}
-
-function storageBase(env) {
-  const base = String(env.SUPABASE_URL || "").trim().replace(/\/+$/, "");
-  if (!/^https:\/\/[A-Za-z0-9.-]+\.supabase\.co$/.test(base)) {
-    throw new Error("SUPABASE_URL is missing or invalid.");
-  }
-  return base + "/storage/v1";
-}
-
-function storageHeaders(env) {
-  const key = String(env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  if (!key) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY Worker secret.");
-  return {
-    apikey: key,
-    authorization: "Bearer " + key
-  };
-}
-
-async function health(env) {
-  const headers = storageHeaders(env);
-  const response = await fetch(storageBase(env) + "/bucket/" + BUCKET, { headers });
-  if (!response.ok) {
-    throw new Error("Supabase Storage bucket check failed (" + response.status + "). Verify the secret and bucket.");
-  }
-  return { service: "AORA GROUP storage gateway", status: "connected", provider: "Supabase Storage", bucket: BUCKET };
-}
-
-async function upload(request, env) {
-  const supplied = request.headers.get("Authorization") || "";
-  if (!env.ADMIN_TOKEN || supplied !== "Bearer " + env.ADMIN_TOKEN) {
-    return json({ error: "Unauthorized." }, 401);
-  }
-
-  const url = new URL(request.url);
-  const key = safeKey(url.searchParams.get("key") || "");
-  if (!key) return json({ error: "Invalid key. Use public/<folder>/<filename>." }, 400);
-
-  const declaredLength = Number(request.headers.get("Content-Length") || 0);
-  if (declaredLength > MAX_UPLOAD_BYTES) return json({ error: "File exceeds the 50 MB limit." }, 413);
-
-  const body = await request.arrayBuffer();
-  if (!body.byteLength) return json({ error: "Empty file." }, 400);
-  if (body.byteLength > MAX_UPLOAD_BYTES) return json({ error: "File exceeds the 50 MB limit." }, 413);
-
-  const contentType = (request.headers.get("Content-Type") || "application/octet-stream").split(";")[0].trim().toLowerCase();
-  if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-    return json({ error: "This file type is not allowed." }, 415);
-  }
-
-  const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-  const endpoint = storageBase(env) + "/object/" + BUCKET + "/" + encodedKey;
-  const headers = {
-    ...storageHeaders(env),
-    "content-type": contentType,
-    "cache-control": "max-age=3600",
-    "x-upsert": "true"
-  };
-
-  const result = await fetch(endpoint, { method: "POST", headers, body });
-  if (!result.ok) {
-    let detail = "";
-    try {
-      const payload = await result.json();
-      detail = String(payload.message || payload.error || payload.statusCode || "").slice(0, 240);
-    } catch {}
-    console.error("Supabase Storage upload failed:", result.status, detail);
-    return json({ error: "Supabase Storage upload failed.", upstreamStatus: result.status }, 502);
-  }
-
-  return json({
-    success: true,
-    fileName: key,
-    contentType,
-    size: body.byteLength,
-    publicUrl: storageBase(env).replace("/storage/v1", "") + "/storage/v1/object/public/" + BUCKET + "/" + encodedKey
-  }, 201);
-}
-
-async function download(request, env, key) {
-  const encodedKey = key.split("/").map(encodeURIComponent).join("/");
-  const target = storageBase(env) + "/object/public/" + BUCKET + "/" + encodedKey;
-  const headers = {};
-  const range = request.headers.get("Range");
-  if (range) headers.Range = range;
-
-  const response = await fetch(target, { method: request.method, headers });
-  if (!response.ok) {
-    return json({ error: response.status === 404 ? "File not found." : "Supabase Storage download failed." },
-      response.status === 404 ? 404 : 502);
-  }
-
-  const outputHeaders = new Headers();
-  for (const name of ["content-type", "content-length", "content-range", "accept-ranges", "etag", "last-modified", "content-disposition"]) {
-    const value = response.headers.get(name);
-    if (value) outputHeaders.set(name, value);
-  }
-  outputHeaders.set("cache-control", "public, max-age=300, s-maxage=3600");
-  outputHeaders.set("x-content-type-options", "nosniff");
-  if (key.toLowerCase().endsWith(".apk")) outputHeaders.set("content-disposition", "attachment");
-
-  return new Response(request.method === "HEAD" ? null : response.body, {
-    status: response.status,
-    headers: outputHeaders
-  });
-}
-
-export default {
-  async fetch(request, env) {
-    const cors = corsHeaders(request, env);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-
-    const url = new URL(request.url);
-    try {
-      if (url.pathname === "/api/health" && request.method === "GET") {
-        return json(await health(env), 200, cors);
-      }
-
-      if (url.pathname === "/api/upload" && request.method === "POST") {
-        const response = await upload(request, env);
-        const headers = new Headers(response.headers);
-        for (const [name, value] of Object.entries(cors)) headers.set(name, value);
-        return new Response(response.body, { status: response.status, headers });
-      }
-
-      if (url.pathname.startsWith("/files/") && (request.method === "GET" || request.method === "HEAD")) {
-        const key = safeKey(url.pathname.slice("/files/".length));
-        if (!key) return json({ error: "Invalid file path." }, 400, cors);
-        const response = await download(request, env, key);
-        const headers = new Headers(response.headers);
-        for (const [name, value] of Object.entries(cors)) headers.set(name, value);
-        return new Response(response.body, { status: response.status, headers });
-      }
-
-      return json({ error: "Not found." }, 404, cors);
-    } catch (error) {
-      console.error("AORA storage gateway error:", error);
-      const message = error instanceof Error ? error.message : "Unknown error";
-      if (url.pathname === "/api/health" && url.searchParams.get("debug") === "1") {
-        return json({ error: "Storage gateway error.", diagnostic: message }, 502, cors);
-      }
-      return json({ error: "Storage gateway error. Check Worker configuration and Supabase Storage." }, 502, cors);
-    }
-  }
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+const ALLOWED = new Set(["application/vnd.android.package-archive","application/octet-stream","image/jpeg","image/png","image/webp","image/svg+xml","application/pdf","application/zip","text/plain"]);
+const json = (data, status=200, headers={}) => new Response(JSON.stringify(data), {status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store",...headers}});
+const cors = (request, env) => {
+  const origin=request.headers.get("Origin")||"", allowed=env.ALLOWED_ORIGIN||"*", ok=allowed==="*"||origin===allowed;
+  return {"access-control-allow-origin":ok?(allowed==="*"?"*":origin):"null","access-control-allow-methods":"GET, HEAD, POST, PUT, DELETE, OPTIONS","access-control-allow-headers":"Authorization, Content-Type, Range","access-control-expose-headers":"Content-Length, Content-Range, Accept-Ranges, ETag","access-control-max-age":"86400","vary":"Origin","x-content-type-options":"nosniff"};
 };
+const base = env => {const u=String(env.SUPABASE_URL||"").replace(/\/+$/,"");if(!/^https:\/\/[A-Za-z0-9.-]+\.supabase\.co$/.test(u))throw Error("SUPABASE_URL missing or invalid");return u;};
+const keyHeaders = env => {const k=String(env.SUPABASE_SERVICE_ROLE_KEY||"").trim();if(!k)throw Error("Missing SUPABASE_SERVICE_ROLE_KEY");return {apikey:k,authorization:"Bearer "+k};};
+const b64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const unb64 = s => Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4)),c=>c.charCodeAt(0));
+async function sign(payload, secret){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);return b64(await crypto.subtle.sign("HMAC",k,new TextEncoder().encode(payload)));}
+async function issueSession(env){const payload=b64(new TextEncoder().encode(JSON.stringify({exp:Date.now()+8*60*60*1000,scope:"admin"})));return payload+"."+await sign(payload,env.ADMIN_TOKEN);}
+async function isAdmin(request,env){const token=(request.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"");const [payload,sig]=token.split(".");if(!payload||!sig||!env.ADMIN_TOKEN)return false;try{if(await sign(payload,env.ADMIN_TOKEN)!==sig)return false;const data=JSON.parse(new TextDecoder().decode(unb64(payload)));return data.scope==="admin"&&data.exp>Date.now();}catch{return false;}}
+async function db(env,path,options={}){const res=await fetch(base(env)+"/rest/v1/"+path,{...options,headers:{...keyHeaders(env),"content-type":"application/json",...(options.headers||{})}});const text=await res.text();if(!res.ok)throw Error("Database request failed ("+res.status+"): "+text.slice(0,180));return text?JSON.parse(text):null;}
+function cleanSlug(v){return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(v||""));}
+function safePath(v){const s=String(v||"");return s.startsWith("public/apps/")&&s.length<500&&!s.includes("..")&&!s.includes("\\")&&/^[A-Za-z0-9._/-]+$/.test(s)?s:null;}
+async function upload(request,env){if(!await isAdmin(request,env))return json({error:"Session administrateur invalide."},401);const u=new URL(request.url),slug=u.searchParams.get("slug"),name=u.searchParams.get("name")||"application.apk";if(!cleanSlug(slug))return json({error:"Identifiant d'application invalide."},400);const body=await request.arrayBuffer();if(!body.byteLength)return json({error:"Fichier vide."},400);if(body.byteLength>MAX_UPLOAD_BYTES)return json({error:"Limite de 50 Mo dépassée."},413);const type=(request.headers.get("Content-Type")||"application/octet-stream").split(";")[0].trim().toLowerCase();if(!ALLOWED.has(type))return json({error:"Format de fichier non autorisé."},415);const ext=(name.match(/\.[A-Za-z0-9]{1,8}$/)||[".apk"])[0].toLowerCase();if(![".apk",".zip",".pdf",".png",".jpg",".jpeg",".webp"].includes(ext))return json({error:"Extension de fichier non autorisée."},415);const path="public/apps/"+slug+"/"+slug+ext;const encoded=path.split("/").map(encodeURIComponent).join("/");const res=await fetch(base(env)+"/storage/v1/object/"+BUCKET+"/"+encoded,{method:"POST",headers:{...keyHeaders(env),"content-type":type,"cache-control":"public, max-age=3600","x-upsert":"true"},body});if(!res.ok)throw Error("Storage upload failed ("+res.status+"): "+(await res.text()).slice(0,160));return json({success:true,storage_path:path,size:body.byteLength,download_url:base(env)+"/storage/v1/object/public/"+BUCKET+"/"+encoded},201);}
+async function handle(request,env){const u=new URL(request.url),p=u.pathname;
+ if(p==="/api/health"&&request.method==="GET"){const r=await fetch(base(env)+"/storage/v1/bucket/"+BUCKET,{headers:keyHeaders(env)});if(!r.ok)throw Error("Storage bucket check failed ("+r.status+")");return json({status:"connected",provider:"Supabase Storage",bucket:BUCKET});}
+ if(p==="/api/admin/login"&&request.method==="POST"){const body=await request.json();if(!env.ADMIN_TOKEN||typeof body.password!=="string"||body.password!==env.ADMIN_TOKEN)return json({error:"Mot de passe incorrect."},401);return json({success:true,token:await issueSession(env),expiresIn:28800});}
+ if(p==="/api/apps"&&request.method==="GET"){const rows=await db(env,"apps?select=id,slug,name,description,version,platform,category,storage_path,icon_url,file_size,published_at&status=eq.published&order=published_at.desc");return json({apps:rows.map(a=>({...a,download_url:a.storage_path?base(env)+"/storage/v1/object/public/"+BUCKET+"/"+a.storage_path.split("/").map(encodeURIComponent).join("/"):null}))},{status:200});}
+ if(p==="/api/upload"&&request.method==="POST")return upload(request,env);
+ if(p.startsWith("/api/admin/")){if(!await isAdmin(request,env))return json({error:"Accès administrateur requis."},401);
+   if(p==="/api/admin/apps"&&request.method==="GET")return json({apps:await db(env,"apps?select=*&order=updated_at.desc")});
+   if(p==="/api/admin/apps"&&request.method==="POST"){const a=await request.json();if(!cleanSlug(a.slug)||!String(a.name||"").trim())return json({error:"Nom et identifiant valides obligatoires."},400);const row={slug:a.slug,name:a.name,description:a.description||"",version:a.version||"1.0.0",platform:a.platform||"Android",category:a.category||"Application",status:a.status==="published"?"published":"draft",storage_path:safePath(a.storage_path),icon_url:a.icon_url||null,file_size:Number(a.file_size)||0,published_at:a.status==="published"?new Date().toISOString():null,updated_at:new Date().toISOString()};const rows=await db(env,"apps",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify(row)});return json({app:rows[0]},201);}
+   const match=p.match(/^\/api\/admin\/apps\/([0-9a-f-]{36})$/i);if(match&&request.method==="PUT"){const a=await request.json(),patch={name:a.name,description:a.description,version:a.version,platform:a.platform,category:a.category,status:a.status,storage_path:safePath(a.storage_path),icon_url:a.icon_url||null,file_size:Number(a.file_size)||0,updated_at:new Date().toISOString(),published_at:a.status==="published"?new Date().toISOString():null};for(const k of Object.keys(patch))if(patch[k]===undefined)delete patch[k];const rows=await db(env,"apps?id=eq."+match[1],{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(patch)});return json({app:rows[0]||null});}
+   if(match&&request.method==="DELETE"){await db(env,"apps?id=eq."+match[1],{method:"DELETE"});return json({success:true});}
+ }
+ return json({error:"Not found."},404);
+}
+export default {async fetch(request,env){const headers=cors(request,env);if(request.method==="OPTIONS")return new Response(null,{status:204,headers});try{const response=await handle(request,env);const h=new Headers(response.headers);for(const [k,v] of Object.entries(headers))h.set(k,v);return new Response(response.body,{status:response.status,headers:h});}catch(e){console.error("AORA API:",e);return json({error:"Erreur du service AORA.",detail:new URL(request.url).searchParams.get("debug")==="1"?String(e.message):undefined},500,headers);}}};
