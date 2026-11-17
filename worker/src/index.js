@@ -211,6 +211,14 @@ export default {
       return json({ error: "Not found." }, 404, cors);
     } catch (error) {
       console.error("AORA storage gateway error:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      // Temporary, opt-in diagnostics for health checks; never returns credentials.
+      if (url.pathname === "/api/health" && url.searchParams.get("debug") === "1") {
+        return json({
+          error: "Storage gateway error.",
+          diagnostic: message
+        }, 502, cors);
+      }
       return json({ error: "Storage gateway error. Check Worker logs and Backblaze key permissions." }, 502, cors);
     }
   }
