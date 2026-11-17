@@ -2,10 +2,11 @@
 
 Site vitrine et futur catalogue indépendant des applications AORA GROUP.
 
-## Stack actuelle
+## Stack
 - HTML, CSS et JavaScript vanilla
-- Déploiement prévu sur Cloudflare Pages
-- Intégration Supabase à venir : base de données, stockage des fichiers et authentification de l'administration
+- Cloudflare Pages pour l'hébergement du site
+- Cloudflare Worker pour l'accès sécurisé au stockage
+- Backblaze B2 (bucket privé `aoragroup`) pour les APK, images, logos et autres fichiers
 
 ## Applications initiales
 - Yuniko
@@ -20,10 +21,10 @@ Ouvrir simplement `index.html` dans un navigateur ou lancer un serveur statique 
 - `index.html` : pages et contenu
 - `styles.css` : design responsive
 - `app.js` : navigation et interactions
-- `assets/aora-mark.svg` : symbole temporaire vectoriel du site
+- `assets/aora-mark.svg` : symbole temporaire du site
+- `worker/` : passerelle Cloudflare Worker vers Backblaze B2
 
-## Prochaines étapes
-1. Valider le design et remplacer le symbole temporaire par le fichier logo final fourni.
-2. Connecter Supabase (table des applications, versions et téléchargements).
-3. Créer l'espace d'administration sécurisé.
-4. Configurer Cloudflare Pages et le domaine officiel.
+## Stockage
+Voir [worker/README.md](worker/README.md) pour ajouter les secrets Cloudflare, déployer le Worker et tester l'envoi/la récupération des fichiers.
+
+Aucun secret Backblaze ne doit être enregistré dans ce dépôt ou dans le JavaScript public du site.
