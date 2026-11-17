@@ -22,7 +22,7 @@ function cleanSlug(v){return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(v||""));}
 function safePath(v){const s=String(v||"");return (s.startsWith("public/apps/")||s.startsWith("public/icons/")||s.startsWith("public/screenshots/"))&&s.length<500&&!s.includes("..")&&!s.includes("\\")&&/^[A-Za-z0-9._/-]+$/.test(s)?s:null;}
 async function upload(request,env){
  if(!await isAdmin(request,env))return json({error:"Session administrateur invalide."},401);
- const u=new URL(request.url),slug=u.searchParams.get("slug"),name=u.searchParams.get("name")||"application.apk",kind=u.searchParams.get("kind")==="icon"?"icon":"app";
+ const u=new URL(request.url),slug=u.searchParams.get("slug"),name=u.searchParams.get("name")||"application.apk",kind=["icon","screenshot"].includes(u.searchParams.get("kind"))?u.searchParams.get("kind"):"app";
  if(!cleanSlug(slug))return json({error:"Identifiant d'application invalide."},400);
  const body=await request.arrayBuffer();if(!body.byteLength)return json({error:"Fichier vide."},400);
  if(body.byteLength>MAX_UPLOAD_BYTES)return json({error:"Limite de 50 Mo dépassée."},413);
