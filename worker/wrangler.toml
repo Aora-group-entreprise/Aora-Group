@@ -2,8 +2,15 @@ name = "aora-group"
 main = "src/index.js"
 compatibility_date = "2026-11-17"
 
+# Preserve variables configured in the Cloudflare dashboard during code deployments.
+keep_vars = true
+
 [vars]
 B2_BUCKET_ID = "4624a289f287ea64ae14081c"
 B2_BUCKET_NAME = "aoragroup"
-# Set this to the exact public website origin before production, e.g. https://aora-group.pages.dev
+# Replace "*" with the exact public website origin before production.
 ALLOWED_ORIGIN = "*"
+
+# Declare required encrypted secrets; their values stay in Cloudflare, never GitHub.
+[secrets]
+required = ["B2_KEY_ID", "B2_APPLICATION_KEY", "ADMIN_TOKEN"]
