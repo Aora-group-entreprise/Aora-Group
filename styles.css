@@ -115,3 +115,41 @@ html{scroll-padding-top:72px}
 @media(prefers-reduced-motion:reduce){
 *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* Explicit value fallbacks for browsers without clamp(), min(), max() or CSS Grid */
+.hero h1{font-size:64px}
+.section-heading h2,.manifesto h2{font-size:48px}
+.closing h2{font-size:52px}
+.tile-icon{width:90px;height:90px}
+.section-wrap{width:88%;max-width:1180px}
+.app-grid{display:flex;flex-wrap:wrap}
+.app-tile{width:33.333%;max-width:33.333%}
+.hero{display:flex;flex-wrap:wrap}
+.hero-copy{width:52%}
+.hero-art{width:48%}
+.manifesto{display:flex;flex-wrap:wrap}
+.manifesto-mark{width:35%}
+.manifesto-copy{width:55%}
+@supports (display:grid){
+.app-grid{display:grid}
+.hero{display:grid}
+.manifesto{display:grid}
+.hero-copy,.hero-art,.manifesto-mark,.manifesto-copy{width:auto}
+}
+@media(max-width:800px){
+.hero-copy,.hero-art{width:100%}
+.manifesto-mark,.manifesto-copy{width:100%}
+.hero h1{font-size:54px}
+.section-heading h2,.manifesto h2{font-size:40px}
+}
+@media(max-width:600px){
+.hero h1{font-size:44px}
+.section-heading h2,.manifesto h2{font-size:34px}
+.closing h2{font-size:38px}
+.tile-icon{width:68px;height:68px}
+.app-tile{width:33.333%;max-width:33.333%}
+}
+@media(max-width:360px){
+.hero h1{font-size:35px}
+.tile-icon{width:58px;height:58px}
+}
