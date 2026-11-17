@@ -79,8 +79,12 @@ async function authorize(env) {
     } catch {
       detail = "";
     }
+    const safeKeyId = keyId;
+    const safeSecretLength = applicationKey.length;
     throw new Error("Backblaze authorization failed (" + response.status + ")" +
-      (detail ? ": " + detail : "."));
+      (detail ? ": " + detail : ".") +
+      " [B2_KEY_ID=" + safeKeyId +
+      "; B2_APPLICATION_KEY_length=" + safeSecretLength + "]");
   }
 
   const data = await response.json();
