@@ -12,7 +12,7 @@ Catalogue indépendant des applications AORA GROUP et site de présentation du s
 Les visiteurs consultent uniquement les applications dont le statut est `published` sur la page d'accueil. Les boutons de téléchargement utilisent les fichiers publiés dans le bucket `aoragroup`.
 
 Pour publier une application :
-1. Ouvrir l'URL privée du tableau de bord : `/aora-control-7f3c9.html`.
+1. Ouvrir l'URL privée du tableau de bord communiquée séparément.
 2. Se connecter avec le secret Cloudflare `ADMIN_TOKEN`.
 3. Renseigner le nom, l'identifiant (slug), la version, la plateforme et la description.
 4. Ajouter le fichier APK/ZIP (50 MiB maximum) et, facultativement, l'URL de l'icône.
