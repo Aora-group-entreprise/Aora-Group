@@ -1,3 +1,4 @@
+// Cloudflare deployment trigger: includes the Backblaze bucket authorization fix.
 /**
  * AORA GROUP — Private Backblaze B2 gateway.
  * The bucket stays private. Public reads are limited to the public/ prefix.
