@@ -56,7 +56,15 @@ function safeKey(raw) {
 async function authorize(env) {
   if (cachedAuth && cachedAuth.expiresAt > Date.now() + 60_000) return cachedAuth;
 
-  const basic = btoa(env.B2_KEY_ID + ":" + env.B2_APPLICATION_KEY);
+  // These two secrets must come from the SAME Backblaze Application Key:
+  // B2_KEY_ID = keyID; B2_APPLICATION_KEY = applicationKey (secret).
+  // Trim accidental whitespace from dashboard copy/paste without logging either value.
+  const keyId = String(env.B2_KEY_ID || "").trim();
+  const applicationKey = String(env.B2_APPLICATION_KEY || "").trim();
+  if (!keyId || !applicationKey) {
+    throw new Error("Missing Backblaze credentials: configure B2_KEY_ID and B2_APPLICATION_KEY as Worker secrets.");
+  }
+  const basic = btoa(keyId + ":" + applicationKey);
   const response = await fetch("https://api.backblazeb2.com/b2api/v4/b2_authorize_account", {
     headers: { Authorization: "Basic " + basic }
   });
