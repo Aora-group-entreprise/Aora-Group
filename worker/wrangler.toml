@@ -11,6 +11,21 @@ B2_BUCKET_NAME = "aoragroup"
 # Replace "*" with the exact public website origin before production.
 ALLOWED_ORIGIN = "*"
 
+# Enable persistent invocation logs to diagnose the Backblaze gateway.
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true
+
+[observability.traces]
+enabled = false
+head_sampling_rate = 1
+persist = true
+
+[observability.issue_detection]
+enabled = false
+
 # Declare required encrypted secrets; their values stay in Cloudflare, never GitHub.
 [secrets]
 required = ["B2_KEY_ID", "B2_APPLICATION_KEY", "ADMIN_TOKEN"]
