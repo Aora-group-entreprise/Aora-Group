@@ -19,7 +19,7 @@ async function issueSession(env){const payload=b64(new TextEncoder().encode(JSON
 async function isAdmin(request,env){const token=(request.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"");const [payload,sig]=token.split(".");if(!payload||!sig||!env.ADMIN_TOKEN)return false;try{if(await sign(payload,env.ADMIN_TOKEN)!==sig)return false;const data=JSON.parse(new TextDecoder().decode(unb64(payload)));return data.scope==="admin"&&data.exp>Date.now();}catch{return false;}}
 async function db(env,path,options={}){const res=await fetch(base(env)+"/rest/v1/"+path,{...options,headers:{...keyHeaders(env),"content-type":"application/json",...(options.headers||{})}});const text=await res.text();if(!res.ok)throw Error("Database request failed ("+res.status+"): "+text.slice(0,180));return text?JSON.parse(text):null;}
 function cleanSlug(v){return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(v||""));}
-function safePath(v){const s=String(v||"");return (s.startsWith("public/apps/")||s.startsWith("public/icons/"))&&s.length<500&&!s.includes("..")&&!s.includes("\\")&&/^[A-Za-z0-9._/-]+$/.test(s)?s:null;}
+function safePath(v){const s=String(v||"");return (s.startsWith("public/apps/")||s.startsWith("public/icons/")||s.startsWith("public/screenshots/"))&&s.length<500&&!s.includes("..")&&!s.includes("\\")&&/^[A-Za-z0-9._/-]+$/.test(s)?s:null;}
 async function upload(request,env){
  if(!await isAdmin(request,env))return json({error:"Session administrateur invalide."},401);
  const u=new URL(request.url),slug=u.searchParams.get("slug"),name=u.searchParams.get("name")||"application.apk",kind=u.searchParams.get("kind")==="icon"?"icon":"app";
