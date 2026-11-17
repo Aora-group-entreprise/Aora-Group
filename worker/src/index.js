@@ -32,7 +32,6 @@ async function handle(request,env){const u=new URL(request.url),p=u.pathname;
    const match=p.match(/^\/api\/admin\/apps\/([0-9a-f-]{36})$/i);if(match&&request.method==="PUT"){const a=await request.json(),patch={name:a.name,description:a.description,version:a.version,platform:a.platform,category:a.category,status:a.status,storage_path:safePath(a.storage_path),icon_url:a.icon_url||null,file_size:Number(a.file_size)||0,updated_at:new Date().toISOString(),published_at:a.status==="published"?new Date().toISOString():null};for(const k of Object.keys(patch))if(patch[k]===undefined)delete patch[k];const rows=await db(env,"apps?id=eq."+match[1],{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(patch)});return json({app:rows[0]||null});}
    if(match&&request.method==="DELETE"){await db(env,"apps?id=eq."+match[1],{method:"DELETE"});return json({success:true});}
  }
- if(p.startsWith("/api/"))return json({error:"Not found."},404);
- return env.ASSETS.fetch(request);
+ return json({error:"Not found."},404);
 }
 export default {async fetch(request,env){const headers=cors(request,env);if(request.method==="OPTIONS")return new Response(null,{status:204,headers});try{const response=await handle(request,env);const h=new Headers(response.headers);for(const [k,v] of Object.entries(headers))h.set(k,v);return new Response(response.body,{status:response.status,headers:h});}catch(e){console.error("AORA API:",e);return json({error:"Erreur du service AORA.",detail:new URL(request.url).searchParams.get("debug")==="1"?String(e.message):undefined},500,headers);}}};
