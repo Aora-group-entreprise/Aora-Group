@@ -19,8 +19,25 @@ async function issueSession(env){const payload=b64(new TextEncoder().encode(JSON
 async function isAdmin(request,env){const token=(request.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"");const [payload,sig]=token.split(".");if(!payload||!sig||!env.ADMIN_TOKEN)return false;try{if(await sign(payload,env.ADMIN_TOKEN)!==sig)return false;const data=JSON.parse(new TextDecoder().decode(unb64(payload)));return data.scope==="admin"&&data.exp>Date.now();}catch{return false;}}
 async function db(env,path,options={}){const res=await fetch(base(env)+"/rest/v1/"+path,{...options,headers:{...keyHeaders(env),"content-type":"application/json",...(options.headers||{})}});const text=await res.text();if(!res.ok)throw Error("Database request failed ("+res.status+"): "+text.slice(0,180));return text?JSON.parse(text):null;}
 function cleanSlug(v){return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(v||""));}
-function safePath(v){const s=String(v||"");return s.startsWith("public/apps/")&&s.length<500&&!s.includes("..")&&!s.includes("\\")&&/^[A-Za-z0-9._/-]+$/.test(s)?s:null;}
-async function upload(request,env){if(!await isAdmin(request,env))return json({error:"Session administrateur invalide."},401);const u=new URL(request.url),slug=u.searchParams.get("slug"),name=u.searchParams.get("name")||"application.apk";if(!cleanSlug(slug))return json({error:"Identifiant d'application invalide."},400);const body=await request.arrayBuffer();if(!body.byteLength)return json({error:"Fichier vide."},400);if(body.byteLength>MAX_UPLOAD_BYTES)return json({error:"Limite de 50 Mo dépassée."},413);const type=(request.headers.get("Content-Type")||"application/octet-stream").split(";")[0].trim().toLowerCase();if(!ALLOWED.has(type))return json({error:"Format de fichier non autorisé."},415);const ext=(name.match(/\.[A-Za-z0-9]{1,8}$/)||[".apk"])[0].toLowerCase();if(![".apk",".zip",".pdf",".png",".jpg",".jpeg",".webp"].includes(ext))return json({error:"Extension de fichier non autorisée."},415);const path="public/apps/"+slug+"/"+slug+ext;const encoded=path.split("/").map(encodeURIComponent).join("/");const res=await fetch(base(env)+"/storage/v1/object/"+BUCKET+"/"+encoded,{method:"POST",headers:{...keyHeaders(env),"content-type":type,"cache-control":"public, max-age=3600","x-upsert":"true"},body});if(!res.ok)throw Error("Storage upload failed ("+res.status+"): "+(await res.text()).slice(0,160));return json({success:true,storage_path:path,size:body.byteLength,download_url:base(env)+"/storage/v1/object/public/"+BUCKET+"/"+encoded},201);}
+function safePath(v){const s=String(v||"");return (s.startsWith("public/apps/")||s.startsWith("public/icons/"))&&s.length<500&&!s.includes("..")&&!s.includes("\\")&&/^[A-Za-z0-9._/-]+$/.test(s)?s:null;}
+async function upload(request,env){
+ if(!await isAdmin(request,env))return json({error:"Session administrateur invalide."},401);
+ const u=new URL(request.url),slug=u.searchParams.get("slug"),name=u.searchParams.get("name")||"application.apk",kind=u.searchParams.get("kind")==="icon"?"icon":"app";
+ if(!cleanSlug(slug))return json({error:"Identifiant d'application invalide."},400);
+ const body=await request.arrayBuffer();if(!body.byteLength)return json({error:"Fichier vide."},400);
+ if(body.byteLength>MAX_UPLOAD_BYTES)return json({error:"Limite de 50 Mo dépassée."},413);
+ const type=(request.headers.get("Content-Type")||"application/octet-stream").split(";")[0].trim().toLowerCase();
+ const ext=(name.match(/\.[A-Za-z0-9]{1,8}$/)||[".apk"])[0].toLowerCase();
+ if(kind==="icon"){
+  if(!["image/png","image/jpeg","image/webp"].includes(type)||![".png",".jpg",".jpeg",".webp"].includes(ext)||body.byteLength>5*1024*1024)return json({error:"Icône invalide. PNG, JPG ou WebP, 5 Mo maximum."},415);
+ }else if(!ALLOWED.has(type)||![".apk",".zip",".pdf"].includes(ext))return json({error:"Format de fichier non autorisé."},415);
+ const path=kind==="icon"?"public/icons/"+slug+"/icon"+ext:"public/apps/"+slug+"/"+slug+ext;
+ const encoded=path.split("/").map(encodeURIComponent).join("/");
+ const res=await fetch(base(env)+"/storage/v1/object/"+BUCKET+"/"+encoded,{method:"POST",headers:{...keyHeaders(env),"content-type":type,"cache-control":"public, max-age=3600","x-upsert":"true"},body});
+ if(!res.ok)throw Error("Storage upload failed ("+res.status+"): "+(await res.text()).slice(0,160));
+ const publicUrl=base(env)+"/storage/v1/object/public/"+BUCKET+"/"+encoded;
+ return json({success:true,storage_path:path,size:body.byteLength,download_url:publicUrl,icon_url:publicUrl},201);
+}
 async function handle(request,env){const u=new URL(request.url),p=u.pathname;
  if(p==="/api/health"&&request.method==="GET"){const r=await fetch(base(env)+"/storage/v1/bucket/"+BUCKET,{headers:keyHeaders(env)});if(!r.ok)throw Error("Storage bucket check failed ("+r.status+")");return json({status:"connected",provider:"Supabase Storage",bucket:BUCKET});}
  if(p==="/api/admin/login"&&request.method==="POST"){const body=await request.json();if(!env.ADMIN_TOKEN||typeof body.password!=="string"||body.password!==env.ADMIN_TOKEN)return json({error:"Mot de passe incorrect."},401);return json({success:true,token:await issueSession(env),expiresIn:28800});}
