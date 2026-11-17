@@ -92,7 +92,15 @@ async function authorize(env) {
   const capabilities = allowed.capabilities || [];
 
   if (!storage?.apiUrl || !storage?.downloadUrl || !bucketAllowed) {
-    throw new Error("Backblaze key bucket mismatch: verify that this Application Key is restricted to the configured B2_BUCKET_ID.");
+    // Bucket IDs/names are identifiers, not credentials; include them in opt-in
+    // health diagnostics so dashboard/config mismatches can be identified safely.
+    const actualBucketId = typeof allowed.bucketId === "string" ? allowed.bucketId : "not-restricted-or-not-returned";
+    const actualBucketName = typeof allowed.bucketName === "string" ? allowed.bucketName : "not-returned";
+    throw new Error(
+      "Backblaze bucket mismatch: configured B2_BUCKET_ID=" + String(env.B2_BUCKET_ID) +
+      "; key allowed.bucketId=" + actualBucketId +
+      "; key allowed.bucketName=" + actualBucketName + "."
+    );
   }
   if (!capabilities.includes("readFiles") || !capabilities.includes("writeFiles")) {
     throw new Error("The Backblaze key must include readFiles and writeFiles permissions.");
