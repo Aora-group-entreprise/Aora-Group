@@ -64,7 +64,14 @@ async function authorize(env) {
   if (!keyId || !applicationKey) {
     throw new Error("Missing Backblaze credentials: configure B2_KEY_ID and B2_APPLICATION_KEY as Worker secrets.");
   }
-  const basic = btoa(keyId + ":" + applicationKey);
+  // B2 Application Key credentials are ASCII strings. Encode the exact
+  // "keyID:applicationKey" bytes as HTTP Basic, without logging either value.
+  const credentials = new TextEncoder().encode(keyId + ":" + applicationKey);
+  let binaryCredentials = "";
+  for (let i = 0; i < credentials.length; i++) {
+    binaryCredentials += String.fromCharCode(credentials[i]);
+  }
+  const basic = btoa(binaryCredentials);
   const response = await fetch("https://api.backblazeb2.com/b2api/v4/b2_authorize_account", {
     headers: { Authorization: "Basic " + basic }
   });
@@ -79,31 +86,27 @@ async function authorize(env) {
     } catch {
       detail = "";
     }
-    const safeKeyId = keyId;
-    const safeSecretLength = applicationKey.length;
     throw new Error("Backblaze authorization failed (" + response.status + ")" +
-      (detail ? ": " + detail : ".") +
-      " [B2_KEY_ID=" + safeKeyId +
-      "; B2_APPLICATION_KEY_length=" + safeSecretLength + "]");
+      (detail ? ": " + detail : "."));
   }
 
   const data = await response.json();
   const storage = data.apiInfo?.storageApi;
   const allowed = storage?.allowed || {};
-  // Backblaze B2 Native API returns a single bucketId/bucketName for
-  // bucket-restricted application keys; it does not return allowed.buckets[].
-  const bucketAllowed = allowed.bucketId === env.B2_BUCKET_ID;
-  const capabilities = allowed.capabilities || [];
+  // B2 Native API v4 moved bucket restrictions into allowed.buckets[].
+  // Each entry contains { id, name }; older response fields are not present in v4.
+  const allowedBuckets = Array.isArray(allowed.buckets) ? allowed.buckets : [];
+  const bucketAllowed = allowedBuckets.some(bucket => bucket?.id === env.B2_BUCKET_ID);
+  const capabilities = Array.isArray(allowed.capabilities) ? allowed.capabilities : [];
 
   if (!storage?.apiUrl || !storage?.downloadUrl || !bucketAllowed) {
-    // Bucket IDs/names are identifiers, not credentials; include them in opt-in
-    // health diagnostics so dashboard/config mismatches can be identified safely.
-    const actualBucketId = typeof allowed.bucketId === "string" ? allowed.bucketId : "not-restricted-or-not-returned";
-    const actualBucketName = typeof allowed.bucketName === "string" ? allowed.bucketName : "not-returned";
+    const returnedBucketIds = allowedBuckets
+      .map(bucket => typeof bucket?.id === "string" ? bucket.id : null)
+      .filter(Boolean);
     throw new Error(
       "Backblaze bucket mismatch: configured B2_BUCKET_ID=" + String(env.B2_BUCKET_ID) +
-      "; key allowed.bucketId=" + actualBucketId +
-      "; key allowed.bucketName=" + actualBucketName + "."
+      "; key allowed bucket IDs=" +
+      (returnedBucketIds.length ? returnedBucketIds.join(",") : "none returned") + "."
     );
   }
   if (!capabilities.includes("readFiles") || !capabilities.includes("writeFiles")) {
