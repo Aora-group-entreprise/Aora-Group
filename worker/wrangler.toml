@@ -1,0 +1,9 @@
+name = "aora-group-storage"
+main = "src/index.js"
+compatibility_date = "2026-11-17"
+
+[vars]
+B2_BUCKET_ID = "4624a289f287ea64ae14081c"
+B2_BUCKET_NAME = "aoragroup"
+# Set this to the exact public website origin before production, e.g. https://aora-group.pages.dev
+ALLOWED_ORIGIN = "https://aora-group.pages.dev"
