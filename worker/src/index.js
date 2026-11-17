@@ -60,7 +60,20 @@ async function authorize(env) {
   const response = await fetch("https://api.backblazeb2.com/b2api/v4/b2_authorize_account", {
     headers: { Authorization: "Basic " + basic }
   });
-  if (!response.ok) throw new Error("Backblaze authorization failed (" + response.status + ").");
+  if (!response.ok) {
+    // Preserve Backblaze's non-secret error code/message for opt-in diagnostics.
+    let detail = "";
+    try {
+      const failure = await response.json();
+      const code = typeof failure.code === "string" ? failure.code : "";
+      const message = typeof failure.message === "string" ? failure.message : "";
+      detail = [code, message].filter(Boolean).join(": ").slice(0, 300);
+    } catch {
+      detail = "";
+    }
+    throw new Error("Backblaze authorization failed (" + response.status + ")" +
+      (detail ? ": " + detail : "."));
+  }
 
   const data = await response.json();
   const storage = data.apiInfo?.storageApi;
