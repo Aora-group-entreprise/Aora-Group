@@ -30,7 +30,7 @@ async function upload(request,env){
  const ext=(name.match(/\.[A-Za-z0-9]{1,8}$/)||[".apk"])[0].toLowerCase();
  if(kind==="icon"){
   if(!["image/png","image/jpeg","image/webp"].includes(type)||![".png",".jpg",".jpeg",".webp"].includes(ext)||body.byteLength>5*1024*1024)return json({error:"Icône invalide. PNG, JPG ou WebP, 5 Mo maximum."},415);
- }else if(!ALLOWED.has(type)||![".apk",".zip",".pdf"].includes(ext))return json({error:"Format de fichier non autorisé."},415);
+ }else if(kind==="app"&&(!ALLOWED.has(type)||![".apk",".zip",".pdf"].includes(ext)))return json({error:"Format de fichier non autorisé."},415);
  if(kind==="screenshot"&&(!["image/png","image/jpeg","image/webp"].includes(type)||![".png",".jpg",".jpeg",".webp"].includes(ext)||body.byteLength>5*1024*1024))return json({error:"Capture invalide. PNG, JPG ou WebP, 5 Mo maximum."},415);const path=kind==="icon"?"public/icons/"+slug+"/icon"+ext:kind==="screenshot"?"public/screenshots/"+slug+"/"+crypto.randomUUID()+ext:"public/apps/"+slug+"/"+slug+ext;
  const encoded=path.split("/").map(encodeURIComponent).join("/");
  const res=await fetch(base(env)+"/storage/v1/object/"+BUCKET+"/"+encoded,{method:"POST",headers:{...keyHeaders(env),"content-type":type,"cache-control":"public, max-age=3600","x-upsert":"true"},body});
