@@ -64,12 +64,13 @@ async function authorize(env) {
   const data = await response.json();
   const storage = data.apiInfo?.storageApi;
   const allowed = storage?.allowed || {};
-  const allowedBuckets = allowed.buckets || [];
-  const bucketAllowed = allowedBuckets.some(bucket => bucket.id === env.B2_BUCKET_ID);
+  // Backblaze B2 Native API returns a single bucketId/bucketName for
+  // bucket-restricted application keys; it does not return allowed.buckets[].
+  const bucketAllowed = allowed.bucketId === env.B2_BUCKET_ID;
   const capabilities = allowed.capabilities || [];
 
   if (!storage?.apiUrl || !storage?.downloadUrl || !bucketAllowed) {
-    throw new Error("The Backblaze key is not restricted to the configured bucket or has invalid permissions.");
+    throw new Error("Backblaze key bucket mismatch: verify that this Application Key is restricted to the configured B2_BUCKET_ID.");
   }
   if (!capabilities.includes("readFiles") || !capabilities.includes("writeFiles")) {
     throw new Error("The Backblaze key must include readFiles and writeFiles permissions.");
