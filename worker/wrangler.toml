@@ -8,7 +8,8 @@ keep_vars = true
 [vars]
 SUPABASE_URL = "https://rpuygrowpdwevngqcwnb.supabase.co"
 # Replace "*" with the exact public website origin before production.
-ALLOWED_ORIGIN = "*"
+# Autoriser uniquement le site public Cloudflare Pages.
+ALLOWED_ORIGIN = "https://aora-group.pages.dev"
 
 [observability.logs]
 enabled = true
@@ -28,8 +29,3 @@ enabled = false
 [secrets]
 required = ["SUPABASE_SERVICE_ROLE_KEY", "ADMIN_TOKEN"]
 
-# Serve the public website and private dashboard from the same workers.dev domain.
-[assets]
-directory = "./site"
-binding = "ASSETS"
-run_worker_first = true
