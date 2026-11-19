@@ -1,5 +1,5 @@
 const API="https://aora-group.hushengniaina.workers.dev";
-const YUNIKO_APK_URL="https://github.com/Aora-group-entreprise/Aora-Group/raw/refs/heads/main/app-debug%20(1).apk";
+const YUNIKO_APK_URL="https://github.com/Aora-group-entreprise/Yuniko/releases/download/yuniko-android-604/app-debug.apk";
 
 const demoIcon=(letter,color)=>'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="'+color+'"/><text x="64" y="86" font-family="Arial" font-size="76" font-weight="bold" text-anchor="middle" fill="white">'+letter+'</text></svg>');
 const DEMO_APPS=[
