@@ -166,3 +166,17 @@ html{scroll-padding-top:72px}
 @media(max-width:340px){
   .tile-icon{width:130px;height:130px}
 }
+
+/* Final catalogue layout fix: prevent legacy fallback widths shrinking app icons */
+.app-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+.app-tile{width:100%;max-width:100%;min-width:0}
+.tile-icon{display:grid;flex:0 0 180px;width:180px;min-width:180px;max-width:180px;height:180px;min-height:180px;max-height:180px;aspect-ratio:1/1;box-sizing:border-box;border-radius:24%;overflow:hidden}
+.tile-icon img{display:block;width:100%;height:100%;min-width:100%;min-height:100%;max-width:none;object-fit:cover}
+@media(max-width:600px){
+  .app-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .app-tile{width:100%;max-width:100%}
+  .tile-icon{flex-basis:145px;width:145px;min-width:145px;max-width:145px;height:145px;min-height:145px;max-height:145px}
+}
+@media(max-width:340px){
+  .tile-icon{flex-basis:130px;width:130px;min-width:130px;max-width:130px;height:130px;min-height:130px;max-height:130px}
+}
