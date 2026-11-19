@@ -1,5 +1,6 @@
 const API="https://aora-group.hushengniaina.workers.dev";
-const YUNIKO_APK_URL="https://github.com/Aora-group-entreprise/Yuniko/releases/download/yuniko-android-604/app-debug.apk";
+const YUNIKO_APK_URL="https://github.com/Aora-group-entreprise/Aora-Group/raw/refs/heads/main/app-debug.apk";
+const YUNIKO_ICON_URL="https://raw.githubusercontent.com/Aora-group-entreprise/Aora-Group/main/file_00000000b6248208a9a8567656f496cb.png";
 
 const demoIcon=(letter,color)=>'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="28" fill="'+color+'"/><text x="64" y="86" font-family="Arial" font-size="76" font-weight="bold" text-anchor="middle" fill="white">'+letter+'</text></svg>');
 const DEMO_APPS=[
@@ -13,7 +14,7 @@ const DEMO_APPS=[
 ['Google Maps','⌖','#4285F4','Navigation','Cartes et navigation — fiche de démonstration.'],
 ['Yuniko','Y','#7657E8','Réseaux sociaux','Aperçu du projet Yuniko de AORA GROUP.'],
 ['i-tafa','i','#14B8A6','Productivité','Aperçu du projet i-tafa de AORA GROUP.']
-].map(([name,letter,color,category,description])=>({id:'demo-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-'),slug:name==='Yuniko'?'yuniko':'demo-'+name.toLowerCase(),name,version:name==='Yuniko'?'1.0.0':'Démo',platform:name==='Yuniko'?'Android':'Android / iOS / Web',category,description:name==='Yuniko'?'Téléchargez Yuniko, le réseau social développé par AORA GROUP.':description,icon_url:demoIcon(letter,color),screenshots:[],isDemo:name!=='Yuniko',...(name==='Yuniko'?{download_url:YUNIKO_APK_URL}:{})}));
+].map(([name,letter,color,category,description])=>({id:'demo-'+name.toLowerCase().replace(/[^a-z0-9]+/g,'-'),slug:name==='Yuniko'?'yuniko':'demo-'+name.toLowerCase(),name,version:name==='Yuniko'?'1.0.0':'Démo',platform:name==='Yuniko'?'Android':'Android / iOS / Web',category,description:name==='Yuniko'?'Téléchargez Yuniko, le réseau social développé par AORA GROUP.':description,icon_url:name==='Yuniko'?YUNIKO_ICON_URL:demoIcon(letter,color),screenshots:[],isDemo:name!=='Yuniko',...(name==='Yuniko'?{download_url:YUNIKO_APK_URL}:{})}));
 
 const toggle=document.querySelector('.menu-toggle'),nav=document.querySelector('.nav');
 toggle?.addEventListener('click',()=>{const open=nav.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open));});
@@ -31,5 +32,5 @@ document.getElementById('detail-download')?.addEventListener('click',async e=>{i
 }
 function render(){const visibleApps=[...catalogue,...DEMO_APPS.filter(d=>!catalogue.some(a=>String(a.name||'').toLowerCase()===d.name.toLowerCase()))];grid.innerHTML=visibleApps.map((a,i)=>'<button class="app-tile" type="button" data-app="'+esc(a.id)+'" aria-label="Découvrir '+esc(a.name)+'"><span class="tile-icon">'+(a.icon_url?'<img src="'+esc(a.icon_url)+'" alt="" loading="lazy">':'<span class="tile-letter">'+esc(a.name.slice(0,1).toUpperCase())+'</span>')+'</span><span class="tile-name">'+esc(a.name)+'</span><span class="tile-category">'+esc(a.category||'Application')+'</span></button>').join('');}
 grid.addEventListener('click',e=>{const tile=e.target.closest('[data-app]');if(tile){const a=[...catalogue,...DEMO_APPS].find(x=>x.id===tile.dataset.app);if(a)openDetail(a);}});
-async function loadCatalogue(){try{const response=await fetch(API+'/api/apps',{headers:{'Accept':'application/json'}});if(!response.ok)throw new Error('Catalogue momentanément indisponible');const data=await response.json();catalogue=(data.apps||[]).map(a=>String(a.name||'').toLowerCase()==='yuniko'?{...a,platform:'Android',download_url:YUNIKO_APK_URL,isDemo:false}:a);render();}catch(error){catalogue=[];render();grid.insertAdjacentHTML('beforeend','<p class="catalog-status">Catalogue en ligne indisponible : les fiches de démonstration restent visibles.</p>');}}
+async function loadCatalogue(){try{const response=await fetch(API+'/api/apps',{headers:{'Accept':'application/json'}});if(!response.ok)throw new Error('Catalogue momentanément indisponible');const data=await response.json();catalogue=(data.apps||[]).map(a=>String(a.name||'').toLowerCase()==='yuniko'?{...a,platform:'Android',icon_url:YUNIKO_ICON_URL,download_url:YUNIKO_APK_URL,isDemo:false}:a);render();}catch(error){catalogue=[];render();grid.insertAdjacentHTML('beforeend','<p class="catalog-status">Catalogue en ligne indisponible : les fiches de démonstration restent visibles.</p>');}}
 loadCatalogue();
