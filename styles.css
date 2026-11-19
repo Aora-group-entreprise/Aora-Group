@@ -155,7 +155,14 @@ html{scroll-padding-top:72px}
 }
 
 
-/* AORA wider app icons — increase width only; preserve responsive height */
-.tile-icon{width:180px}
-@media(max-width:600px){.app-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 14px}.tile-icon{width:145px}.tile-name{font-size:13px}}
-@media(max-width:340px){.tile-icon{width:130px}}
+/* App icons: true rounded squares, enlarged evenly in both dimensions */
+.tile-icon{width:180px;height:180px;aspect-ratio:1/1;border-radius:24%;overflow:hidden}
+.tile-icon img{width:100%;height:100%;object-fit:cover}
+@media(max-width:600px){
+  .app-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 14px}
+  .tile-icon{width:145px;height:145px;border-radius:24%}
+  .tile-name{font-size:13px}
+}
+@media(max-width:340px){
+  .tile-icon{width:130px;height:130px}
+}
