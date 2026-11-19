@@ -155,8 +155,7 @@ html{scroll-padding-top:72px}
 }
 
 
-/* AORA larger app icons */
-.tile-icon{width:124px;height:124px}
-.tile-letter{font-size:48px}
-@media(max-width:600px){.app-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 14px}.tile-icon{width:112px;height:112px}.tile-name{font-size:13px}}
-@media(max-width:340px){.tile-icon{width:104px;height:104px}}
+/* AORA wider app icons — keep the original icon height */
+.tile-icon{width:124px}
+@media(max-width:600px){.app-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 14px}.tile-icon{width:112px}.tile-name{font-size:13px}}
+@media(max-width:340px){.tile-icon{width:104px}}
