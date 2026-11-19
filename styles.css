@@ -399,3 +399,10 @@ html,body{max-width:100%;overflow-x:clip}
   .section-wrap{max-width:1240px}
   .site-header{padding-inline:max(32px,calc((100% - 1240px)/2))}
 }
+
+/* Stabilisation du fond et bouton de téléchargement adaptatif */
+html{overflow-x:hidden}
+body{min-width:0;overflow-x:hidden}
+.ambient{position:fixed;}
+.detail-download{width:min(100%,260px);max-width:100%;min-width:0;justify-content:center;white-space:nowrap;}
+@media(max-width:430px){.detail-download{width:min(100%,220px);}}
